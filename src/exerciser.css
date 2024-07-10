@@ -59,6 +59,12 @@ textarea, .pane {
     background-color: #e9e9e9 !important;
 }
 
+.result-pane-java .monaco-editor-background,
+.result-pane-java .margin-view-overlays
+{
+    background-color: #e9e9e9 !important;
+}
+
 .SplitPane {
     position: relative !important;
 }

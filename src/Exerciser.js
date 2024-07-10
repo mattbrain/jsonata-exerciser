@@ -7,6 +7,7 @@
 import React from 'react';
 import SplitPane from 'react-split-pane'
 import MonacoEditor from 'react-monaco-editor';
+import ScreenshotComponent from './ScreenshotComponent'; // Updated import
 import format from './images/format.png';
 import sample from './sample';
 import logo from './images/JSONata-white-38.png';
@@ -64,7 +65,8 @@ class Exerciser extends React.Component {
             panelStates: {
                 bindings: 'hidden'
             },
-            externalLibs: []
+            externalLibs: [],
+            webpImage: null
         };
         this.handleOpenSaveModal = this.handleOpenSaveModal.bind(this);
         this.handleOpenSlackModal = this.handleOpenSlackModal.bind(this);
@@ -214,10 +216,28 @@ class Exerciser extends React.Component {
     }
 
     onChangeData(newValue, e) {
+
+
         this.setState({json: newValue});
         clearTimeout(this.timer);
         this.timer = setTimeout(this.eval.bind(this), 500);
         this.clearMarkers();
+
+        try {
+            const jsonData = JSON.parse(newValue);
+            if (jsonData && jsonData.screenshot) {
+                console.log("Updating the screenshot")
+                // Update the state with the base64 string
+                this.setState({ screenshotBase64: jsonData.screenshot });
+            } else {
+                // If there is no screenshot, clear the state
+                this.setState({ screenshotBase64: null });
+            }
+        } catch (error) {
+            // Handle JSON parsing errors if any
+            console.error('Error parsing JSON:', error);
+        }
+
     }
     onChangeBindings(newValue, e) {
         this.setState({ bindings: newValue });
@@ -288,7 +308,7 @@ class Exerciser extends React.Component {
     }
 
     async eval() {
-        let input, jsonataResult, bindings;
+        let input, jsonataResult, bindings, jsonataResult_Java;
 
         if (typeof window.jsonata === 'undefined') {
             this.timer = setTimeout(this.eval.bind(this), 500);
@@ -337,6 +357,7 @@ class Exerciser extends React.Component {
             if (this.state.jsonata !== '') {
                 const allBindings = { ...bindings, ...externalLibs };
                 jsonataResult = await this.evalJsonata(input, allBindings);
+                
             } else {
                 jsonataResult = '^^ Enter a JSONata expression in the box above ^^'
             }
@@ -348,6 +369,19 @@ class Exerciser extends React.Component {
             const start = end - (err.token ? err.token.length : 1);
             this.errorMarker(start, end, this.jsonataEditor, this.state.jsonata);
         }
+
+        try {
+            if (this.state.jsonata !== '') {
+                jsonataResult_Java = await this.evalJsonata_java(input, null);       
+            } else {
+                jsonataResult_Java = '^^ Enter a JSONata expression in the box above ^^'
+            }
+            this.setState({result_java: jsonataResult_Java});
+        } catch (err) {
+            this.setState({ result_java: err.message || String(err) });
+            console.log(err);
+        }
+
     }
 
     errorMarker(start, end, editor, buffer) {
@@ -379,6 +413,8 @@ class Exerciser extends React.Component {
         this.jsonEditor.decorations = this.jsonEditor.deltaDecorations(this.jsonEditor.decorations, []);
     }
 
+
+
     async evalJsonata(input, bindings) {
         const expr = window.jsonata(this.state.jsonata);
 
@@ -405,6 +441,42 @@ class Exerciser extends React.Component {
         }
         return pathresult;
     }
+
+    async evalJsonata_java(input, bindings) {
+        
+      
+        var data = new FormData();
+	    data.append('json',JSON.stringify(input));
+	    data.append('rule',this.state.jsonata);
+        var text_result = null;
+        try {
+          const response = await fetch('http://localhost:8080/hello', {
+            body: data,
+            method: 'POST'
+          });
+      
+          if (!response.ok) {
+            throw new Error('Failed to evaluate JSONata expression');
+          }
+      
+          let pathresult = await response.json();
+          // Process the result as needed
+          if (typeof pathresult === 'undefined') {
+            pathresult = '** no match **';
+        } else {
+            text_result = pathresult;
+            pathresult = JSON.stringify(pathresult, function (key, val) {
+                return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
+                    (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
+                        (typeof val === 'function') ? '<native function>#' + val.length : val;
+            }, 2);
+        }
+         return pathresult;
+        } catch (error) {
+          console.log('Error evaluating JSONata expression:', error) ;
+          return '** evaluation error ** ' + error + "\n" + text_result;
+        }
+      }
 
     timeboxExpression(expr, timeout, maxDepth) {
         let depth = 0;
@@ -528,6 +600,8 @@ class Exerciser extends React.Component {
             extraEditorClassName: 'editor-pane'
         };
 
+        const { screenshotBase64 } = this.state;
+
         return <div className="App">
             <header className="App-header">
                 <div id="banner">
@@ -549,7 +623,7 @@ class Exerciser extends React.Component {
             </header>
 
             <SplitPane split="vertical" minSize={100} defaultSize={'50%'}>
-                <SplitPane split="horizontal" minSize={100} size={this.state.panelStates.bindings === "visible" ? '30%' : '20px'} primary="second" allowResize={this.state.panelStates.bindings === "visible"}>
+                <SplitPane split="horizontal" minSize={100} size={this.state.panelStates.bindings === "visible" ? '30%' : '20px'} primary="second" allowResize={true}>
                     <div className="pane">
                         <MonacoEditor
                             language="json"
@@ -568,6 +642,9 @@ class Exerciser extends React.Component {
                             <option value="Library">Library</option>
                             <option value="Bindings">Bindings</option>
                         </select>
+                    </div>
+                    <div className="pane">
+                        {<ScreenshotComponent base64WebPImage={screenshotBase64} style={{ width: '100%', height: '100%' }} />}
                     </div>
                     <div className="w-full">
                         <div className="pane-heading" onClick={
@@ -602,10 +679,24 @@ class Exerciser extends React.Component {
                         <select id="version-select" onChange={this.changeVersion.bind(this)}></select>
                         <div id="version-label" className="label"></div>
                     </div>
-                    <MonacoEditor
+                    <SplitPane split="horizontal" minSize={50} defaultSize={170}>
+                        <MonacoEditor
+                            language="json"
+                            theme="jsonataTheme"
+                            value={this.state.result}
+                            options={{
+                                lineNumbers: 'off',
+                                minimap: { enabled: false },
+                                automaticLayout: true,
+                                contextmenu: false,
+                                scrollBeyondLastLine: false,
+                                readOnly: true,
+                                extraEditorClassName: 'result-pane'
+                            }}
+                        /><MonacoEditor
                         language="json"
                         theme="jsonataTheme"
-                        value={this.state.result}
+                        value={this.state.result_java}
                         options={{
                             lineNumbers: 'off',
                             minimap: { enabled: false },
@@ -613,9 +704,11 @@ class Exerciser extends React.Component {
                             contextmenu: false,
                             scrollBeyondLastLine: false,
                             readOnly: true,
-                            extraEditorClassName: 'result-pane'
+                            extraEditorClassName: 'result-pane-java'
                         }}
                     />
+                        <SplitPane split="horizontal" minSize={50} defaultSize={170}></SplitPane>
+                    </SplitPane>
                 </SplitPane>
             </SplitPane>
             <Modal

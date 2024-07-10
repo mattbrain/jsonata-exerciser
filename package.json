@@ -69,8 +69,8 @@
   },
   "homepage": "http://andrew-coleman.github.io",
   "scripts": {
-    "start": "node scripts/start.js",
-    "build": "node scripts/build.js",
+    "start": "export SET NODE_OPTIONS=--openssl-legacy-provider && node scripts/start.js",
+    "build": "export SET NODE_OPTIONS=--openssl-legacy-provider && node scripts/build.js",
     "test": "node scripts/test.js",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build -r https://github.com/andrew-coleman/andrew-coleman.github.io.git -b master"
