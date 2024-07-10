@@ -450,7 +450,7 @@ class Exerciser extends React.Component {
 	    data.append('rule',this.state.jsonata);
         var text_result = null;
         try {
-          const response = await fetch('https://jsonata-java.appleby-analytics.com/hello', {
+          const response = await fetch('https://jsonata.appleby-analytics.com/hello', {
             body: data,
             method: 'POST'
           });
