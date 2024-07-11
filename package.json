@@ -2,6 +2,9 @@
   "name": "jsonata-exerciser",
   "version": "0.1.0",
   "private": true,
+  "optionalDependencies": {
+      "fsevents": "^2.3.3"
+  },
   "dependencies": {
     "@babel/core": "^7.24.7",
     "@babel/preset-env": "^7.24.7",
@@ -32,7 +35,6 @@
     "file-loader": "2.0.0",
     "fork-ts-checker-webpack-plugin-alt": "0.4.14",
     "fs-extra": "7.0.0",
-    "fsevents": "^2.3.3",
     "highlight.js": "^10.4.1",
     "html-webpack-plugin": "4.0.0-alpha.2",
     "identity-obj-proxy": "3.0.0",
@@ -75,6 +77,8 @@
   "scripts": {
     "start": "export SET NODE_OPTIONS=--openssl-legacy-provider && node scripts/start.js",
     "build": "export SET NODE_OPTIONS=--openssl-legacy-provider && node scripts/build.js",
+    "install:mac": "npm install",
+    "install:linux": "npm install --no-optional",
     "test": "node scripts/test.js",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d build -r https://github.com/andrew-coleman/andrew-coleman.github.io.git -b master"

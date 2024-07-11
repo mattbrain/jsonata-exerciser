@@ -16,7 +16,7 @@ WORKDIR /usr/src/app
 COPY package*.json ./
 
 # Install any needed packages specified in package.json
-RUN npm install
+RUN npm run install:linux
 
 # Copy the rest of the application source code to the working directory
 COPY . .
