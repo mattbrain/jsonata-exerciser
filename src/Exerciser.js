@@ -37,12 +37,26 @@ class Exerciser extends React.Component {
         this.setState({ panelStates: { ...this.state.panelStates, [panel]: state } });
     }
 
+    /*
     async onSelectRecord(id) {
         try {
             const response = await axios.get(`https://jsonata.appleby-analytics.com/api/record/${id}`);
             this.setState({ json: JSON.stringify(response.data.accessibility) });
+          
+            this.onChangeData(JSON.stringify(response.data.accessibility));
+            this.format();
         } catch (error) {
             console.error('Error fetching record:', error);
+        }
+    }
+    */
+    async onSelectRecord(recordData) {
+        try {
+            this.setState({ json: JSON.stringify(recordData.accessibility) });
+            this.onChangeData(JSON.stringify(recordData.accessibility));
+            this.format();
+        } catch (error) {
+            console.error('Error processing record:', error);
         }
     }
 
@@ -261,41 +275,7 @@ class Exerciser extends React.Component {
             }
             return;
         }
-        /*
-        let externalLibs = {};
-
-        if (this.state.externalLibs) {
-            for (const lib of this.state.externalLibs) {
-                externalLibs = { ...externalLibs, ...lib.libraryContext };
-            }
-        }
-
-        try {
-            const args = Object.keys(externalLibs);
-            // eslint-disable-next-line no-new-func
-            bindings = new Function(...args, `return (${this.state.bindings})`)(...(args.map(a => externalLibs[a])));
-        } catch (err) {
-            console.log(err);
-            this.setState({ result: 'ERROR IN BINDINGS: ' + err.message });
-            return;
-        }
-
-        try {
-            if (this.state.jsonata !== '') {
-                const allBindings = { ...bindings, ...externalLibs };
-                jsonataResult = await this.evalJsonata(input, allBindings);
-            } else {
-                jsonataResult = '^^ Enter a JSONata expression in the box above ^^';
-            }
-            this.setState({ result: jsonataResult });
-        } catch (err) {
-            this.setState({ result: err.message || String(err) });
-            console.log(err);
-            const end = err.position + 1;
-            const start = end - (err.token ? err.token.length : 1);
-            this.errorMarker(start, end, this.jsonataEditor, this.state.jsonata);
-        }
-        */
+  
         try {
             if (this.state.jsonata !== '') {
                 jsonataResult_Java = await this.evalJsonata_java(input, null);
@@ -427,9 +407,9 @@ class Exerciser extends React.Component {
             scrollBeyondLastLine: false,
             extraEditorClassName: 'editor-pane'
         };
-
+    
         const { screenshotBase64 } = this.state;
-
+    
         return (
             <div className="App">
                 <header className="App-header">
@@ -442,92 +422,80 @@ class Exerciser extends React.Component {
                         </div>
                     </div>
                 </header>
-
-                <SplitPane split="vertical" minSize={100} defaultSize={'50%'}>
-                    <SplitPane split="horizontal" minSize={100} size={this.state.panelStates.bindings === "visible" ? '30%' : '20px'} primary="second" allowResize={true}>
-                        <div className="pane">
-                            <MonacoEditor
-                                language="json"
-                                theme="jsonataTheme"
-                                value={this.state.json}
-                                options={options}
-                                onChange={this.onChangeData.bind(this)}
-                                editorDidMount={this.jsonEditorDidMount.bind(this)}
-                            />
-                            <div id="json-label" className="label">JSON</div>
-                            <img src={format} id="json-format" title="Format" onClick={this.format.bind(this)} alt={"Format"} />
-                        </div>
-                        <div className="pane">
-                            {<ScreenshotComponent base64WebPImage={screenshotBase64} style={{ width: '100%', height: '100%' }} />}
-                        </div>
-                        <div className="w-full">
-                            <div className="pane-heading" onClick={
-                                () => this.setPanelState("bindings", this.state.panelStates.bindings === "visible" ? 'hidden' : 'visible')
-                            }>
-                                <span>{this.state.panelStates.bindings !== "visible" ? "►" : "▼"}&nbsp;Bindings</span>
-                            </div>
-                            <div className="pane" hidden={this.state.panelStates.bindings !== "visible"}>
+                <RecordList onSelectRecord={this.onSelectRecord.bind(this)} />
+                <SplitPane split="vertical" minSize={100} defaultSize={'30%'}>
+                    <div className="pane">
+                        <ScreenshotComponent base64WebPImage={screenshotBase64} style={{ width: '100%', height: '100%' }} />
+                    </div>
+                    <SplitPane split="vertical" minSize={100} defaultSize={'50%'}>
+                        
+                            <div className="pane">
                                 <MonacoEditor
-                                    language="javascript"
-                                    value={this.state.bindings}
+                                    language="json"
+                                    theme="jsonataTheme"
+                                    value={this.state.json}
                                     options={options}
-                                    onChange={this.onChangeBindings.bind(this)}
-                                    editorDidMount={this.bindingsEditorDidMount.bind(this)}
+                                    onChange={this.onChangeData.bind(this)}
+                                    editorDidMount={this.jsonEditorDidMount.bind(this)}
+                                />
+                                <div id="json-label" className="label">JSON</div>
+                                <img src={format} id="json-format" title="Format" onClick={this.format.bind(this)} alt={"Format"} />
+                            </div>
+                           
+                      
+                        <SplitPane split="horizontal" minSize={50} defaultSize={170}>
+                            <div className="pane">
+                                <MonacoEditor
+                                    language="jsonata"
+                                    theme="jsonataTheme"
+                                    value={this.state.jsonata}
+                                    options={options}
+                                    onChange={this.onChangeExpression.bind(this)}
+                                    editorWillMount={jsonataMode.bind(this)}
+                                    editorDidMount={this.jsonataEditorDidMount.bind(this)}
+                                />
+                                <div id="jsonata-label" className="label">JSONata</div>
+                                <select id="version-select" onChange={this.changeVersion.bind(this)}></select>
+                                <div id="version-label" className="label"></div>
+                            </div>
+                            <div className="pane">
+                                <MonacoEditor
+                                    language="json"
+                                    theme="jsonataTheme"
+                                    value={this.state.result}
+                                    options={{
+                                        lineNumbers: 'off',
+                                        minimap: { enabled: false },
+                                        automaticLayout: true,
+                                        contextmenu: false,
+                                        scrollBeyondLastLine: false,
+                                        readOnly: true,
+                                        extraEditorClassName: 'result-pane'
+                                    }}
+                                />
+                                <MonacoEditor
+                                    language="json"
+                                    theme="jsonataTheme"
+                                    value={this.state.result_java}
+                                    options={{
+                                        lineNumbers: 'off',
+                                        minimap: { enabled: false },
+                                        automaticLayout: true,
+                                        contextmenu: false,
+                                        scrollBeyondLastLine: false,
+                                        readOnly: true,
+                                        extraEditorClassName: 'result-pane-java'
+                                    }}
                                 />
                             </div>
-                        </div>
-                    </SplitPane>
-                    <SplitPane split="horizontal" minSize={50} defaultSize={170}>
-                        <div className="pane">
-                            <MonacoEditor
-                                language="jsonata"
-                                theme="jsonataTheme"
-                                value={this.state.jsonata}
-                                options={options}
-                                onChange={this.onChangeExpression.bind(this)}
-                                editorWillMount={jsonataMode.bind(this)}
-                                editorDidMount={this.jsonataEditorDidMount.bind(this)}
-                            />
-                            <div id="jsonata-label" className="label">JSONata</div>
-                            <select id="version-select" onChange={this.changeVersion.bind(this)}></select>
-                            <div id="version-label" className="label"></div>
-                        </div>
-                        <div className="pane">
-                            <MonacoEditor
-                                language="json"
-                                theme="jsonataTheme"
-                                value={this.state.result}
-                                options={{
-                                    lineNumbers: 'off',
-                                    minimap: { enabled: false },
-                                    automaticLayout: true,
-                                    contextmenu: false,
-                                    scrollBeyondLastLine: false,
-                                    readOnly: true,
-                                    extraEditorClassName: 'result-pane'
-                                }}
-                            />
-                            <MonacoEditor
-                                language="json"
-                                theme="jsonataTheme"
-                                value={this.state.result_java}
-                                options={{
-                                    lineNumbers: 'off',
-                                    minimap: { enabled: false },
-                                    automaticLayout: true,
-                                    contextmenu: false,
-                                    scrollBeyondLastLine: false,
-                                    readOnly: true,
-                                    extraEditorClassName: 'result-pane-java'
-                                }}
-                            />
-                        </div>
+                        </SplitPane>
                     </SplitPane>
                 </SplitPane>
-                <RecordList onSelectRecord={this.onSelectRecord.bind(this)} />
             </div>
         );
     }
+    
+    
 }
 
 export default Exerciser;
