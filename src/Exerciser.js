@@ -362,11 +362,15 @@ class Exerciser extends React.Component {
                 pathresult = '** no match **';
             } else {
                 text_result = pathresult;
+                try {
                 pathresult = JSON.stringify(pathresult, function (key, val) {
                     return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
                         (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
                             (typeof val === 'function') ? '<native function>#' + val.length : val;
                 }, 2);
+                } catch (error) {
+                    pathresult = text_result;
+                }
             }
             return pathresult;
         } catch (error) {
