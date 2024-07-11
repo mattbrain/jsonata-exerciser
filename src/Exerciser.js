@@ -372,7 +372,7 @@ class Exerciser extends React.Component {
                 }
                 return pathresult;
             } catch (error) {
-                return text_result;
+                return response;
             }
            
         } catch (error) {
