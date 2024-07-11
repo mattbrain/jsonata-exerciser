@@ -356,23 +356,25 @@ class Exerciser extends React.Component {
             if (!response.ok) {
                 throw new Error('Failed to evaluate JSONata expression');
             }
-
+            try {
             let pathresult = await response.json();
-            if (typeof pathresult === 'undefined') {
-                pathresult = '** no match **';
-            } else {
-                text_result = pathresult;
-                try {
-                pathresult = JSON.stringify(pathresult, function (key, val) {
-                    return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
-                        (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
-                            (typeof val === 'function') ? '<native function>#' + val.length : val;
-                }, 2);
-                } catch (error) {
-                    pathresult = text_result;
+                if (typeof pathresult === 'undefined') {
+                    pathresult = '** no match **';
+                } else {
+                    text_result = pathresult;
+                    
+                    pathresult = JSON.stringify(pathresult, function (key, val) {
+                        return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
+                            (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
+                                (typeof val === 'function') ? '<native function>#' + val.length : val;
+                    }, 2);
+                    
                 }
+                return pathresult;
+            } catch (error) {
+                return text_result;
             }
-            return pathresult;
+           
         } catch (error) {
             console.log('Error evaluating JSONata expression:', error);
             return '** evaluation error ** ' + error + "\n" + text_result;
