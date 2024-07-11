@@ -5,96 +5,45 @@
  */
 
 import React from 'react';
-import SplitPane from 'react-split-pane'
+import SplitPane from 'react-split-pane';
 import MonacoEditor from 'react-monaco-editor';
 import ScreenshotComponent from './ScreenshotComponent'; // Updated import
 import format from './images/format.png';
-import sample from './sample';
-import logo from './images/JSONata-white-38.png';
-import share from './images/share.svg';
 import docs from './images/docs-white-32.png';
-import twitter from './images/twitter-white.png';
-import slack from './images/Slack_Mark_Monochrome_White.svg';
-import stackoverflow from './images/so-white-32.png';
-import github from './images/GitHub-Mark-Light-32px.png';
-import ReCAPTCHA from "react-google-recaptcha";
-import Modal from 'react-modal';
 import jsonataMode from './jsonataMode';
-import ExternalLibsComponent, { getLibraryHandle } from './externalLibsComponent';
+import { getLibraryHandle } from './externalLibsComponent';
+import RecordList from './RecordList'; // Import RecordList component
+import axios from 'axios';
 
-Modal.setAppElement('#root');
-
-const recaptchaRef = React.createRef();
 const baseUri = 'https://us-south.functions.appdomain.cloud/api/v1/web/04d6b400-5947-46c6-ae3e-ebdf4a7056de/default/';
-
-const customStyles = {
-    content: {
-        top: '50%',
-        left: '50%',
-        width: '400px',
-        height: '230px',
-        marginRight: '-50%',
-        transform: 'translate(-50%, -50%)',
-        borderRadius: '10px',
-        background: '-webkit-linear-gradient(#fff, #999)'
-    }
-};
-const externalLibsModalStyle = {
-    content: {
-        top: '50%',
-        left: '50%',
-        width: '60%',
-        margin: '20px',
-        marginRight: '-50%',
-        transform: 'translate(-50%, -50%)',
-        borderRadius: '10px',
-    }
-};
 
 class Exerciser extends React.Component {
     constructor(props) {
         super(props);
         this.state = {
-            json: JSON.stringify(sample.Invoice.json, null, 2),
-            jsonata: sample.Invoice.jsonata,
-            bindings: sample.Invoice.bindings,
+            json: '{}', // Start with an empty JSON
+            jsonata: '',
+            bindings: '',
             result: '',
-            saveModal: false,
-            slackModal: false,
-            externalLibsModal: false,
             panelStates: {
                 bindings: 'hidden'
             },
             externalLibs: [],
             webpImage: null
         };
-        this.handleOpenSaveModal = this.handleOpenSaveModal.bind(this);
-        this.handleOpenSlackModal = this.handleOpenSlackModal.bind(this);
-        this.handleOpenExternalLibsModal = this.handleOpenExternalLibsModal.bind(this);
-        this.handleCloseModal = this.handleCloseModal.bind(this);
-    }
-
-    handleOpenSaveModal(e) {
-        e.preventDefault();
-        this.setState({ saveModal: true });
     }
 
     setPanelState(panel, state) {
         this.setState({ panelStates: { ...this.state.panelStates, [panel]: state } });
     }
 
-    handleOpenSlackModal(e) {
-        e.preventDefault();
-        this.setState({ slackModal: true });
-    }
-    handleOpenExternalLibsModal(e) {
-        e.preventDefault();
-        this.setState({ externalLibsModal: true });
-    }
-
-    handleCloseModal(e) {
-        e.preventDefault();
-        this.setState({ saveModal: false, slackModal: false, externalLibsModal: false });
+    async onSelectRecord(id) {
+        try {
+            const response = await axios.get(`https://jsonata.appleby-analytics.com/api/record/${id}`);
+            this.setState({ json: JSON.stringify(response.data.accessibility) });
+        } catch (error) {
+            console.error('Error fetching record:', error);
+        }
     }
 
     componentDidMount() {
@@ -105,7 +54,7 @@ class Exerciser extends React.Component {
                 result => {
                     console.log(result);
                     if (process.env.NODE_ENV === 'development') {
-                        result.versions.unshift('local')
+                        result.versions.unshift('local');
                     }
                     const select = document.getElementById('version-select');
                     result.versions.forEach(function (tag) {
@@ -128,7 +77,7 @@ class Exerciser extends React.Component {
             // load the data
             fetch(baseUri + 'get-shared.json?id=' + this.props.data)
                 .then(res => res.json())
-                .then(result =>{
+                .then(result => {
                     return Promise.all([Promise.resolve(result), this.getExternalLibsInitialized(result.externalLibs)])
                 })
                 .then(
@@ -145,9 +94,6 @@ class Exerciser extends React.Component {
                     },
                     error => {
                         console.log(error);
-                        // this.setState({
-                        //     json: error
-                        // });
                     }
                 )
         } else {
@@ -160,18 +106,18 @@ class Exerciser extends React.Component {
             return fetch(lib.url)
                 .then((res) => {
                     if (!res.ok) {
-                        console.error(res)
+                        console.error(res);
                         return Promise.resolve(undefined);
                     }
                     return res.text();
                 }).then(libFileText => {
                     if (!libFileText) {
-                        console.error("Could not load library from " + lib.url)
+                        console.error("Could not load library from " + lib.url);
                         return Promise.resolve(undefined);
                     }
                     const libraryContext = getLibraryHandle(libFileText, lib.moduleName);
-                    return Promise.resolve({ ...lib, libraryContext: { [lib.moduleName]: libraryContext } })
-                })
+                    return Promise.resolve({ ...lib, libraryContext: { [lib.moduleName]: libraryContext } });
+                });
         });
 
         return Promise.all(allPromises);
@@ -180,7 +126,6 @@ class Exerciser extends React.Component {
     jsonEditorDidMount(editor, monaco) {
         this.jsonEditor = editor;
         editor.decorations = [];
-        //editor.focus();
     }
 
     bindingsEditorDidMount(editor, monaco) {
@@ -216,9 +161,7 @@ class Exerciser extends React.Component {
     }
 
     onChangeData(newValue, e) {
-
-
-        this.setState({json: newValue});
+        this.setState({ json: newValue });
         clearTimeout(this.timer);
         this.timer = setTimeout(this.eval.bind(this), 500);
         this.clearMarkers();
@@ -226,19 +169,17 @@ class Exerciser extends React.Component {
         try {
             const jsonData = JSON.parse(newValue);
             if (jsonData && jsonData.screenshot) {
-                console.log("Updating the screenshot")
-                // Update the state with the base64 string
+                console.log("Updating the screenshot");
                 this.setState({ screenshotBase64: jsonData.screenshot });
             } else {
-                // If there is no screenshot, clear the state
                 this.setState({ screenshotBase64: null });
             }
+            this.eval();
         } catch (error) {
-            // Handle JSON parsing errors if any
             console.error('Error parsing JSON:', error);
         }
-
     }
+
     onChangeBindings(newValue, e) {
         this.setState({ bindings: newValue });
         console.log('onChangeBindings', newValue, e);
@@ -248,7 +189,7 @@ class Exerciser extends React.Component {
     }
 
     onChangeExpression(newValue, e) {
-        this.setState({jsonata: newValue});
+        this.setState({ jsonata: newValue });
         clearTimeout(this.timer);
         this.timer = setTimeout(this.eval.bind(this), 500);
         this.clearMarkers();
@@ -294,19 +235,6 @@ class Exerciser extends React.Component {
         head.appendChild(script);
     }
 
-
-    changeSample(event) {
-        const data = sample[event.target.value];
-        this.setState({
-            json: JSON.stringify(data.json, null, 2),
-            jsonata: data.jsonata,
-            bindings: data.bindings
-        });
-        clearTimeout(this.timer);
-        this.timer = setTimeout(this.eval.bind(this), 100);
-        this.clearMarkers();
-    }
-
     async eval() {
         let input, jsonataResult, bindings, jsonataResult_Java;
 
@@ -333,13 +261,12 @@ class Exerciser extends React.Component {
             }
             return;
         }
-
-
+        /*
         let externalLibs = {};
 
         if (this.state.externalLibs) {
             for (const lib of this.state.externalLibs) {
-                externalLibs = { ...externalLibs, ...lib.libraryContext }
+                externalLibs = { ...externalLibs, ...lib.libraryContext };
             }
         }
 
@@ -357,11 +284,10 @@ class Exerciser extends React.Component {
             if (this.state.jsonata !== '') {
                 const allBindings = { ...bindings, ...externalLibs };
                 jsonataResult = await this.evalJsonata(input, allBindings);
-                
             } else {
-                jsonataResult = '^^ Enter a JSONata expression in the box above ^^'
+                jsonataResult = '^^ Enter a JSONata expression in the box above ^^';
             }
-            this.setState({result: jsonataResult});
+            this.setState({ result: jsonataResult });
         } catch (err) {
             this.setState({ result: err.message || String(err) });
             console.log(err);
@@ -369,19 +295,18 @@ class Exerciser extends React.Component {
             const start = end - (err.token ? err.token.length : 1);
             this.errorMarker(start, end, this.jsonataEditor, this.state.jsonata);
         }
-
+        */
         try {
             if (this.state.jsonata !== '') {
-                jsonataResult_Java = await this.evalJsonata_java(input, null);       
+                jsonataResult_Java = await this.evalJsonata_java(input, null);
             } else {
-                jsonataResult_Java = '^^ Enter a JSONata expression in the box above ^^'
+                jsonataResult_Java = '^^ Enter a JSONata expression in the box above ^^';
             }
-            this.setState({result_java: jsonataResult_Java});
+            this.setState({ result_java: jsonataResult_Java });
         } catch (err) {
             this.setState({ result_java: err.message || String(err) });
             console.log(err);
         }
-
     }
 
     errorMarker(start, end, editor, buffer) {
@@ -413,17 +338,12 @@ class Exerciser extends React.Component {
         this.jsonEditor.decorations = this.jsonEditor.deltaDecorations(this.jsonEditor.decorations, []);
     }
 
-
-
     async evalJsonata(input, bindings) {
         const expr = window.jsonata(this.state.jsonata);
 
         expr.assign('trace', function (arg) {
             console.log(arg);
         });
-
-        // expr.registerFunction('sin', x => Math.sin(x), '<n-:n>');
-        // expr.registerFunction('cos', x => Math.cos(x), '<n-:n>');
 
         if (!this.local) {
             this.timeboxExpression(expr, 1000, 500);
@@ -443,40 +363,37 @@ class Exerciser extends React.Component {
     }
 
     async evalJsonata_java(input, bindings) {
-        
-      
         var data = new FormData();
-	    data.append('json',JSON.stringify(input));
-	    data.append('rule',this.state.jsonata);
+        data.append('json', JSON.stringify(input));
+        data.append('rule', this.state.jsonata);
         var text_result = null;
         try {
-          const response = await fetch('https://jsonata.appleby-analytics.com/parseJsonata', {
-            body: data,
-            method: 'POST'
-          });
-      
-          if (!response.ok) {
-            throw new Error('Failed to evaluate JSONata expression');
-          }
-      
-          let pathresult = await response.json();
-          // Process the result as needed
-          if (typeof pathresult === 'undefined') {
-            pathresult = '** no match **';
-        } else {
-            text_result = pathresult;
-            pathresult = JSON.stringify(pathresult, function (key, val) {
-                return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
-                    (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
-                        (typeof val === 'function') ? '<native function>#' + val.length : val;
-            }, 2);
-        }
-         return pathresult;
+            const response = await fetch('https://jsonata.appleby-analytics.com/parseJsonata', {
+                body: data,
+                method: 'POST'
+            });
+
+            if (!response.ok) {
+                throw new Error('Failed to evaluate JSONata expression');
+            }
+
+            let pathresult = await response.json();
+            if (typeof pathresult === 'undefined') {
+                pathresult = '** no match **';
+            } else {
+                text_result = pathresult;
+                pathresult = JSON.stringify(pathresult, function (key, val) {
+                    return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
+                        (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
+                            (typeof val === 'function') ? '<native function>#' + val.length : val;
+                }, 2);
+            }
+            return pathresult;
         } catch (error) {
-          console.log('Error evaluating JSONata expression:', error) ;
-          return '** evaluation error ** ' + error + "\n" + text_result;
+            console.log('Error evaluating JSONata expression:', error);
+            return '** evaluation error ** ' + error + "\n" + text_result;
         }
-      }
+    }
 
     timeboxExpression(expr, timeout, maxDepth) {
         let depth = 0;
@@ -484,27 +401,13 @@ class Exerciser extends React.Component {
 
         const checkRunnaway = function () {
             if (depth > maxDepth) {
-                // stack too deep
-                // eslint-disable-next-line  no-throw-literal
-                throw {
-                    code: 'U1001',
-                    message: 'Stack overflow error: Check for non-terminating recursive function.  Consider rewriting as tail-recursive.',
-                    stack: (new Error()).stack
-                };
+                throw new Error('Stack overflow error: Check for non-terminating recursive function. Consider rewriting as tail-recursive.');
             }
             if (Date.now() - time > timeout) {
-                // expression has run for too long
-                // eslint-disable-next-line  no-throw-literal
-                throw {
-                    code: 'U1002',
-                    message: "Expression evaluation timeout: Check for infinite loop",
-                    stack: (new Error()).stack
-                };
+                throw new Error("Expression evaluation timeout: Check for infinite loop");
             }
-
         };
 
-        // register callbacks
         expr.assign('__evaluate_entry', function (expr, input, environment) {
             depth++;
             checkRunnaway();
@@ -513,81 +416,6 @@ class Exerciser extends React.Component {
             depth--;
             checkRunnaway();
         });
-    }
-
-    save(resp) {
-        // post the input data and jsonata
-        let input;
-        try {
-            input = JSON.parse(this.state.json);
-        } catch (err) { }
-        const body = {
-            input: input,
-            jsonata: this.state.jsonata,
-            bindings: this.state.bindings,
-            externalLibs: this.state.externalLibs,
-            recaptcha: resp
-        };
-        if (typeof this.state.result !== 'undefined') {
-            body.result = this.state.result;
-        }
-        // if(typeof jsonataError !== 'undefined') {
-        //     body.error = jsonataError;
-        // }
-
-        console.log("save:", body);
-        const url = baseUri + 'save';
-
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        })
-            .then(res => res.json())
-            .then(
-                response => {
-                    console.log(response);
-                    const location = "https://try.jsonata.org/" + response.id;
-                    const msg = 'Share this link: <a href="' + location + '">' + location + '</a>';
-                    document.getElementById("share-msg").innerHTML = msg;
-                    document.getElementById("share-title").innerHTML = 'Expression saved!';
-                    document.getElementsByClassName("verify")[0].style.display = 'none';
-                    //document.getElementsByClassName("verify")[1].style.display = 'none';
-                }).catch(error => console.error(error));
-    }
-
-    slack(resp) {
-        let email;
-        try {
-            email = document.getElementById("slack-email").value;
-            console.log(email)
-        } catch (err) { }
-        const body = {
-            email: email,
-            recaptcha: resp
-        };
-
-        const url = baseUri + 'slack-invite';
-        fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify(body)
-        })
-            .then(res => res.json())
-            .then(
-                response => {
-                    console.log(response);
-                    document.getElementById("slack-title").innerHTML = 'Invitation sent!';
-                    document.getElementsByClassName("verify")[0].style.display = 'none';
-                    //document.getElementsByClassName("verify")[1].style.display = 'none';
-                }).catch(error => {
-                    console.error(error);
-                    document.getElementById("slack-title").innerHTML = 'Error: ' + error.message;
-                });
     }
 
     render() {
@@ -602,171 +430,103 @@ class Exerciser extends React.Component {
 
         const { screenshotBase64 } = this.state;
 
-        return <div className="App">
-            <header className="App-header">
-                <div id="banner">
-                    <div id="logo"><a href="http://jsonata.org"><img src={logo} alt={"JSONata"} /></a></div>
-                    <div id="banner-strip" className="bannerpart">
-                        <div id="banner1">JSONata Exerciser</div>
-                        <div id="banner4">
-                            <a href="#share" onClick={this.handleOpenSaveModal.bind(this)}><img src={share} alt="Save and Share" /></a>
-                            <a href="http://docs.jsonata.org"><img src={docs} alt="Documentation" /></a>
-                            <a
-                                href="http://twitter.com/intent/tweet?status=JSONata:  The JSON query and transformation language.+http://jsonata.org"><img
-                                    id="t-icon" src={twitter} alt={"Twitter"} /></a>
-                            <a href="#slack" onClick={this.handleOpenSlackModal.bind(this)}><img src={slack} alt={"Join us on Slack"} /></a>
-                            <a href="http://stackoverflow.com/search?q=JSONata"><img src={stackoverflow} alt={"StackOverflow"} /></a>
-                            <a href="https://github.com/jsonata-js/jsonata"><img src={github} alt={"GitHub"} /></a>
+        return (
+            <div className="App">
+                <header className="App-header">
+                    <div id="banner">
+                        <div id="banner-strip" className="bannerpart">
+                            <div id="banner1">Rule Developer</div>
+                            <div id="banner4">
+                                <a href="http://docs.jsonata.org"><img src={docs} alt="Documentation" /></a>
+                            </div>
                         </div>
                     </div>
-                </div>
-            </header>
+                </header>
 
-            <SplitPane split="vertical" minSize={100} defaultSize={'50%'}>
-                <SplitPane split="horizontal" minSize={100} size={this.state.panelStates.bindings === "visible" ? '30%' : '20px'} primary="second" allowResize={true}>
-                    <div className="pane">
-                        <MonacoEditor
-                            language="json"
-                            theme="jsonataTheme"
-                            value={this.state.json}
-                            options={options}
-                            onChange={this.onChangeData.bind(this)}
-                            editorDidMount={this.jsonEditorDidMount.bind(this)}
-                        />
-                        <div id="json-label" className="label">JSON</div>
-                        <img src={format} id="json-format" title="Format" onClick={this.format.bind(this)} alt={"Format"} />
-                        <select id="sample-data" onChange={this.changeSample.bind(this)}>
-                            <option value="Invoice">Invoice</option>
-                            <option value="Address">Address</option>
-                            <option value="Schema">Schema</option>
-                            <option value="Library">Library</option>
-                            <option value="Bindings">Bindings</option>
-                        </select>
-                    </div>
-                    <div className="pane">
-                        {<ScreenshotComponent base64WebPImage={screenshotBase64} style={{ width: '100%', height: '100%' }} />}
-                    </div>
-                    <div className="w-full">
-                        <div className="pane-heading" onClick={
-                            () => this.setPanelState("bindings", this.state.panelStates.bindings === "visible" ? 'hidden' : 'visible')
-                        }>
-                            <span>{this.state.panelStates.bindings !== "visible" ? "►" : "▼"}&nbsp;Bindings</span>
-                        </div>
-                        <div className="pane" hidden={this.state.panelStates.bindings !== "visible"}>
+                <SplitPane split="vertical" minSize={100} defaultSize={'50%'}>
+                    <SplitPane split="horizontal" minSize={100} size={this.state.panelStates.bindings === "visible" ? '30%' : '20px'} primary="second" allowResize={true}>
+                        <div className="pane">
                             <MonacoEditor
-                                language="javascript"
-                                value={this.state.bindings}
+                                language="json"
+                                theme="jsonataTheme"
+                                value={this.state.json}
                                 options={options}
-                                onChange={this.onChangeBindings.bind(this)}
-                                editorDidMount={this.bindingsEditorDidMount.bind(this)}
+                                onChange={this.onChangeData.bind(this)}
+                                editorDidMount={this.jsonEditorDidMount.bind(this)}
                             />
-                            <button id="add-libraries" onClick={this.handleOpenExternalLibsModal.bind(this)}>Add/Remove external libraries</button>
+                            <div id="json-label" className="label">JSON</div>
+                            <img src={format} id="json-format" title="Format" onClick={this.format.bind(this)} alt={"Format"} />
                         </div>
-                    </div>
-                </SplitPane>
-                <SplitPane split="horizontal" minSize={50} defaultSize={170}>
-                    <div className="pane">
-                        <MonacoEditor
-                            language="jsonata"
-                            theme="jsonataTheme"
-                            value={this.state.jsonata}
-                            options={options}
-                            onChange={this.onChangeExpression.bind(this)}
-                            editorWillMount={jsonataMode.bind(this)}
-                            editorDidMount={this.jsonataEditorDidMount.bind(this)}
-                        />
-                        <div id="jsonata-label" className="label">JSONata</div>
-                        <select id="version-select" onChange={this.changeVersion.bind(this)}></select>
-                        <div id="version-label" className="label"></div>
-                    </div>
+                        <div className="pane">
+                            {<ScreenshotComponent base64WebPImage={screenshotBase64} style={{ width: '100%', height: '100%' }} />}
+                        </div>
+                        <div className="w-full">
+                            <div className="pane-heading" onClick={
+                                () => this.setPanelState("bindings", this.state.panelStates.bindings === "visible" ? 'hidden' : 'visible')
+                            }>
+                                <span>{this.state.panelStates.bindings !== "visible" ? "►" : "▼"}&nbsp;Bindings</span>
+                            </div>
+                            <div className="pane" hidden={this.state.panelStates.bindings !== "visible"}>
+                                <MonacoEditor
+                                    language="javascript"
+                                    value={this.state.bindings}
+                                    options={options}
+                                    onChange={this.onChangeBindings.bind(this)}
+                                    editorDidMount={this.bindingsEditorDidMount.bind(this)}
+                                />
+                            </div>
+                        </div>
+                    </SplitPane>
                     <SplitPane split="horizontal" minSize={50} defaultSize={170}>
-                        <MonacoEditor
-                            language="json"
-                            theme="jsonataTheme"
-                            value={this.state.result}
-                            options={{
-                                lineNumbers: 'off',
-                                minimap: { enabled: false },
-                                automaticLayout: true,
-                                contextmenu: false,
-                                scrollBeyondLastLine: false,
-                                readOnly: true,
-                                extraEditorClassName: 'result-pane'
-                            }}
-                        /><MonacoEditor
-                        language="json"
-                        theme="jsonataTheme"
-                        value={this.state.result_java}
-                        options={{
-                            lineNumbers: 'off',
-                            minimap: { enabled: false },
-                            automaticLayout: true,
-                            contextmenu: false,
-                            scrollBeyondLastLine: false,
-                            readOnly: true,
-                            extraEditorClassName: 'result-pane-java'
-                        }}
-                    />
-                        <SplitPane split="horizontal" minSize={50} defaultSize={170}></SplitPane>
+                        <div className="pane">
+                            <MonacoEditor
+                                language="jsonata"
+                                theme="jsonataTheme"
+                                value={this.state.jsonata}
+                                options={options}
+                                onChange={this.onChangeExpression.bind(this)}
+                                editorWillMount={jsonataMode.bind(this)}
+                                editorDidMount={this.jsonataEditorDidMount.bind(this)}
+                            />
+                            <div id="jsonata-label" className="label">JSONata</div>
+                            <select id="version-select" onChange={this.changeVersion.bind(this)}></select>
+                            <div id="version-label" className="label"></div>
+                        </div>
+                        <div className="pane">
+                            <MonacoEditor
+                                language="json"
+                                theme="jsonataTheme"
+                                value={this.state.result}
+                                options={{
+                                    lineNumbers: 'off',
+                                    minimap: { enabled: false },
+                                    automaticLayout: true,
+                                    contextmenu: false,
+                                    scrollBeyondLastLine: false,
+                                    readOnly: true,
+                                    extraEditorClassName: 'result-pane'
+                                }}
+                            />
+                            <MonacoEditor
+                                language="json"
+                                theme="jsonataTheme"
+                                value={this.state.result_java}
+                                options={{
+                                    lineNumbers: 'off',
+                                    minimap: { enabled: false },
+                                    automaticLayout: true,
+                                    contextmenu: false,
+                                    scrollBeyondLastLine: false,
+                                    readOnly: true,
+                                    extraEditorClassName: 'result-pane-java'
+                                }}
+                            />
+                        </div>
                     </SplitPane>
                 </SplitPane>
-            </SplitPane>
-            <Modal
-                isOpen={this.state.saveModal}
-                onRequestClose={this.handleCloseModal.bind(this)}
-                style={customStyles}
-                contentLabel="Save and Share"
-            >
-                <div>
-                    <a href="#close" title="Close" className="close"
-                        onClick={this.handleCloseModal.bind(this)}>&times;</a>
-                    <h2 id="share-title">Save expression</h2>
-                    <p id="share-msg">Save and share your JSONata expression.</p>
-                    <p className="verify">Please check the box below to get a URL to your saved expression...</p>
-                    <form onSubmit={this.onSubmit} >
-                        <ReCAPTCHA
-                            ref={recaptchaRef}
-                            sitekey="6LdOEBkUAAAAAB0ADgy0xeUOtVWfSjj3cuhPFqbt"
-                            onChange={this.save.bind(this)}
-                        />
-                    </form>
-                </div>
-            </Modal>
-            <Modal
-                isOpen={this.state.slackModal}
-                onRequestClose={this.handleCloseModal.bind(this)}
-                style={customStyles}
-                contentLabel="Slack Invite"
-            >
-                <div>
-                    <a href="#close" title="Close" className="close"
-                        onClick={this.handleCloseModal.bind(this)}>&times;</a>
-                    <h2 id="slack-title">Join us on Slack</h2>
-                    <p><input id="slack-email" placeholder="Enter your email" /></p>
-                    <p className="verify">Please check the box below to get an invitation...</p>
-                    <form onSubmit={this.onSubmit} >
-                        <ReCAPTCHA
-                            ref={recaptchaRef}
-                            sitekey="6LdOEBkUAAAAAB0ADgy0xeUOtVWfSjj3cuhPFqbt"
-                            onChange={this.slack.bind(this)}
-                        />
-                    </form>
-                </div>
-            </Modal>
-            <Modal
-                isOpen={this.state.externalLibsModal}
-                onRequestClose={this.handleCloseModal.bind(this)}
-                style={externalLibsModalStyle}
-                contentLabel="Add/Remove external libraries"
-            >
-                <div>
-                    <a href="#close" title="Close" className="close"
-                        onClick={this.handleCloseModal.bind(this)}>&times;</a>
-                    <h3 id="slack-title">Add/Remove external libraries</h3>
-                    <ExternalLibsComponent onChange={this.onChangeExternalLibraries.bind(this)} externalLibs={this.state.externalLibs} />
-                </div>
-            </Modal>
-        </div>;
+                <RecordList onSelectRecord={this.onSelectRecord.bind(this)} />
+            </div>
+        );
     }
 }
 
