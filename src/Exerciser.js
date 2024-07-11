@@ -352,33 +352,44 @@ class Exerciser extends React.Component {
                 body: data,
                 method: 'POST'
             });
-
+        
             if (!response.ok) {
                 throw new Error('Failed to evaluate JSONata expression');
             }
+        
             try {
-            let pathresult = await response.json();
+                const text = await response.text();
+                let pathresult;
+        
+                try {
+                    pathresult = JSON.parse(text);
+                } catch (jsonError) {
+                    throw new Error(text);
+                }
+        
                 if (typeof pathresult === 'undefined') {
                     pathresult = '** no match **';
                 } else {
                     text_result = pathresult;
-                    
+        
                     pathresult = JSON.stringify(pathresult, function (key, val) {
                         return (typeof val !== 'undefined' && val !== null && val.toPrecision) ? Number(val.toPrecision(13)) :
                             (val && (val._jsonata_lambda === true || val._jsonata_function === true)) ? '{function:' + (val.signature ? val.signature.definition : "") + '}' :
                                 (typeof val === 'function') ? '<native function>#' + val.length : val;
                     }, 2);
-                    
                 }
                 return pathresult;
+        
             } catch (error) {
-                return response.body;
+                console.error('Error parsing JSON response:', error);
+                return '** invalid JSON response ** ' + error;
             }
-           
+        
         } catch (error) {
-            console.log('Error evaluating JSONata expression:', error);
+            console.error('Error evaluating JSONata expression:', error);
             return '** evaluation error ** ' + error + "\n" + text_result;
         }
+        
     }
 
     timeboxExpression(expr, timeout, maxDepth) {
