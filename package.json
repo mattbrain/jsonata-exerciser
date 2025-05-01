@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "optionalDependencies": {
-      "fsevents": "^2.3.3"
+    "fsevents": "^2.3.3"
   },
   "dependencies": {
     "@babel/core": "^7.24.7",
@@ -41,6 +41,7 @@
     "jest": "23.6.0",
     "jest-pnp-resolver": "1.0.1",
     "jest-resolve": "23.6.0",
+    "lodash": "^4.17.21",
     "mini-css-extract-plugin": "0.4.3",
     "monaco-editor-webpack-plugin": "1.7.0",
     "optimize-css-assets-webpack-plugin": "5.0.1",
@@ -75,8 +76,8 @@
   },
   "homepage": "http://andrew-coleman.github.io",
   "scripts": {
-    "start": "export SET NODE_OPTIONS=--openssl-legacy-provider && node scripts/start.js",
-    "build": "export SET NODE_OPTIONS=--openssl-legacy-provider && node scripts/build.js",
+    "start": "node scripts/start.js",
+    "build": "node scripts/build.js",
     "install:mac": "npm install",
     "install:linux": "npm install --no-optional",
     "test": "node scripts/test.js",

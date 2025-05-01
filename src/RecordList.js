@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import axios from 'axios';
+import _ from 'lodash'; // npm install lodash
 
 function RecordList({ onSelectRecord }) {
   const [records, setRecords] = useState([]);
@@ -10,16 +11,28 @@ function RecordList({ onSelectRecord }) {
   const [selectedDeviceKey, setSelectedDeviceKey] = useState('');
   const [selectedMeasurementSummary, setSelectedMeasurementSummary] = useState('');
   const [selectedRecordId, setSelectedRecordId] = useState(null);
+  const [eventTypes, setEventTypes] = useState([]); // New state for event types
+  //selectedEventType is the selected event type from the dropdown
+  const [selectedEventType, setSelectedEventType] = useState(''); 
+ const url = 'https://jsonata.appleby-analytics.com';
+ 
+ //const url = 'http://localhost:3001';
 
   // Fetch filter data
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const deviceKeysResponse = await axios.get('https://jsonata.appleby-analytics.com/api/device_keys');
+        const deviceKeysResponse = await axios.get(url+'/api/device_keys');
         setDeviceKeys(deviceKeysResponse.data);
 
-        const measurementSummariesResponse = await axios.get('https://jsonata.appleby-analytics.com/api/measurement_summaries');
+        const measurementSummariesResponse = await axios.get(url+'/api/measurement_summaries');
         setMeasurementSummaries(measurementSummariesResponse.data);
+
+       //add event_types to the filter list
+        const eventTypesResponse = await axios.get(url+'/api/event_types');
+        setEventTypes(eventTypesResponse.data);
+      
+
       } catch (error) {
         console.error('Error fetching filters:', error);
       }
@@ -31,10 +44,14 @@ function RecordList({ onSelectRecord }) {
   // Fetch records based on filters
   useEffect(() => {
     const fetchRecords = async () => {
+      console.log(`Fetching records for page ${page}, device_key: ${selectedDeviceKey}, measurement_summary: ${selectedMeasurementSummary}, event_type: ${selectedEventType}`);
+
       try {
-        const response = await axios.get('https://jsonata.appleby-analytics.com/api/records', {
-          params: { page, device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary }
+        const response = await axios.get(url+'/api/records', {
+          params: { page, device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary, event_type: selectedEventType }//, event_type: selectedEventType } 
         });
+        console.log('Records fetched successfully:', response.data);
+
         setRecords(response.data.records);
         setTotalPages(response.data.totalPages);
       } catch (error) {
@@ -43,12 +60,12 @@ function RecordList({ onSelectRecord }) {
     };
 
     fetchRecords();
-  }, [page, selectedDeviceKey, selectedMeasurementSummary]);
+  }, [page, selectedDeviceKey, selectedMeasurementSummary, selectedEventType]); // Add selectedEventType to the dependency array
 
   const loadRecord = async (recordId) => {
     console.log(`Attempting to load record with ID: ${recordId}`);
     try {
-      const response = await axios.get(`https://jsonata.appleby-analytics.com/api/record/${recordId}`);
+      const response = await axios.get(url+`/api/record/${recordId}`);
       console.log('Record loaded successfully:', response.data);
       setSelectedRecordId(recordId); // Store only the record ID
       onSelectRecord(response.data); // Pass the data to the parent component
@@ -60,8 +77,8 @@ function RecordList({ onSelectRecord }) {
   const loadNextRecord = async () => {
     if (selectedRecordId) {
       try {
-        const response = await axios.get(`https://jsonata.appleby-analytics.com/api/record/${selectedRecordId}/next`, {
-          params: { device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary }
+        const response = await axios.get(url+`/api/record/${selectedRecordId}/next`, {
+          params: { device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary, event_type: selectedEventType } //, event_type: selectedEventType }
         });
         if (response.data && response.data.id) {
           loadRecord(response.data.id);
@@ -75,8 +92,8 @@ function RecordList({ onSelectRecord }) {
   const loadPreviousRecord = async () => {
     if (selectedRecordId) {
       try {
-        const response = await axios.get(`https://jsonata.appleby-analytics.com/api/record/${selectedRecordId}/previous`, {
-          params: { device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary }
+        const response = await axios.get(url+`/api/record/${selectedRecordId}/previous`, {
+          params: { device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary, event_type: selectedEventType } //, event_type: selectedEventType }
         });
         if (response.data && response.data.id) {
           loadRecord(response.data.id);
@@ -112,6 +129,18 @@ function RecordList({ onSelectRecord }) {
             ))}
           </select>
         </label>
+
+        <label>
+          Event Type:
+          <select value={selectedEventType} onChange={e => setSelectedEventType(e.target.value)}>
+            <option value=''>All</option>
+            {eventTypes.map(eventType => (
+              <option key={eventType} value={eventType}>
+                {eventType}
+              </option>
+            ))}
+          </select>
+          </label>
       </div>
       <ul>
         {records.map(record => (
