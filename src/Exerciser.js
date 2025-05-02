@@ -8,9 +8,9 @@ import jsonataMode from './jsonataMode';
 import { getLibraryHandle } from './externalLibsComponent';
 import RecordList from './RecordList';
 import axios from 'axios';
-  //const url = 'https://jsonata.appleby-analytics.com';
+  const url = 'https://jsonata.appleby-analytics.com';
  
-  const url = 'http://localhost:3001/api/';
+  //const url = 'http://localhost:3001/api/';
 
 
 const baseUri = 'https://us-south.functions.appdomain.cloud/api/v1/web/04d6b400-5947-46c6-ae3e-ebdf4a7056de/default/';
