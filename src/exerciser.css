@@ -211,3 +211,17 @@ textarea, .pane {
 .w-full {
     width: 100%;
 }
+
+
+#eval-mode-select, #eval-mode-select + label {
+    position: relative;
+    z-index: 10;
+    background: white;
+    border: 2px solid #ccc;
+    padding: 4px;
+}
+
+#jsonata-label, #version-select, #version-label, #eval-mode-select {
+    display: inline-block;
+    margin-right: 10px;
+}
