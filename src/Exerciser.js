@@ -8,7 +8,7 @@ import jsonataMode from './jsonataMode';
 import { getLibraryHandle } from './externalLibsComponent';
 import RecordList from './RecordList';
 import axios from 'axios';
-  const url = 'https://jsonata.appleby-analytics.com';
+  const url = 'https://jsonata.appleby-analytics.com/';
  
   //const url = 'http://localhost:3001/api/';
 
