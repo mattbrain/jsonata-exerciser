@@ -14,9 +14,9 @@ function RecordList({ onSelectRecord }) {
   const [eventTypes, setEventTypes] = useState([]); // New state for event types
   //selectedEventType is the selected event type from the dropdown
   const [selectedEventType, setSelectedEventType] = useState(''); 
-  const url = 'https://jsonata.appleby-analytics.com';
+  //const url = 'https://jsonata.appleby-analytics.com';
  
- //const url = 'http://localhost:3001';
+ const url = 'http://localhost:3001';
 
   // Fetch filter data
   useEffect(() => {

@@ -225,3 +225,11 @@ textarea, .pane {
     display: inline-block;
     margin-right: 10px;
 }
+
+
+.toolbar {
+    display: flex;
+    justify-content: flex-end;
+    align-items: center;
+    padding: 10px; /* Optional */
+}

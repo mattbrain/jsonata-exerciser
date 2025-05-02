@@ -8,6 +8,10 @@ import jsonataMode from './jsonataMode';
 import { getLibraryHandle } from './externalLibsComponent';
 import RecordList from './RecordList';
 import axios from 'axios';
+  //const url = 'https://jsonata.appleby-analytics.com';
+ 
+  const url = 'http://localhost:3001/api/';
+
 
 const baseUri = 'https://us-south.functions.appdomain.cloud/api/v1/web/04d6b400-5947-46c6-ae3e-ebdf4a7056de/default/';
 
@@ -24,8 +28,75 @@ class Exerciser extends React.Component {
             },
             externalLibs: [],
             webpImage: null,
-            evalMode: 'java' // NEW: Default eval mode
+            evalMode: 'java', // NEW: Default eval mode
+            ruleNames: [],
+            selectedRule: null,
+            ruleData: null,
+            ruleName: ''
         };
+    }
+
+    async getRuleNames() {
+        try {
+            const response = await fetch(url + 'get_rule_names');
+            const data = await response.json();
+            this.setState({ ruleNames: data });
+        } catch (error) {
+            console.error('Error fetching rule names:', error);
+        }
+    }
+    async getRule() {
+        try {
+            const response = await fetch(url + 'get_rule/' + this.state.selectedRule);
+            const jsonataExpr = await response.text(); // 👈 it's plain text, not JSON
+            this.setState({ jsonata: jsonataExpr });
+        } catch (error) {
+            console.error('Error fetching rule:', error);
+        }
+    }
+    
+    async saveRule() {
+        try {
+            const data = {
+                rule: this.state.jsonata,
+                rule_name: this.state.ruleName,
+            };
+            const response = await fetch(url + 'save_rule/', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify(data)
+            });
+    
+            const result = await response.json();
+            console.log('Rule saved:', result);
+    
+            // Show confirmation dialog
+            window.alert('Rule saved successfully!');
+    
+            // Clear rule name
+            this.setState({ ruleName: '' });
+    
+            this.getRuleNames();
+        } catch (error) {
+            console.error('Error saving rule:', error);
+            window.alert('Failed to save rule. See console for details.');
+        }
+    }
+    
+
+    async deleteRule() {
+        try {
+            const response = await fetch(url + 'delete_rule/' + this.state.selectedRule, {
+                method: 'DELETE',
+            });
+            const result = await response.json();
+            console.log('Rule deleted:', result);
+            this.getRuleNames();
+        } catch (error) {
+            console.error('Error deleting rule:', error);
+        }
     }
 
     setPanelState(panel, state) {
@@ -43,6 +114,7 @@ class Exerciser extends React.Component {
     }
 
     componentDidMount() {
+        this.getRuleNames();
         this.loadJSONata();
         fetch(baseUri + 'jsonata-versions.json')
             .then(res => res.json())
@@ -298,6 +370,8 @@ class Exerciser extends React.Component {
         this.jsonEditor.decorations = this.jsonEditor.deltaDecorations(this.jsonEditor.decorations, []);
     }
 
+  
+
     render() {
         const options = {
             minimap: { enabled: false },
@@ -316,22 +390,76 @@ class Exerciser extends React.Component {
                     <div id="banner">
                         <div id="banner-strip" className="bannerpart">
                             <div id="banner1">Rule Developer</div>
-                            <select
-        id="eval-mode-select"
-        value={this.state.evalMode}
-        onChange={e => this.setState({ evalMode: e.target.value }, () => this.eval())}
-        style={{ marginLeft: '20px', fontSize: '14px', padding: '4px' }}
-    >
-        <option value="java">Java (Server)</option>
-        <option value="js">JS (Local)</option>
-    </select>
-                            <div id="banner4">
-                                <a href="http://docs.jsonata.org"><img src={docs} alt="Documentation" /></a>
+                 
+                                                        <div id="banner4">
+                               <a href="http://docs.jsonata.org"><img src={docs} alt="Documentation" /></a>
                             </div>
                         </div>
                     </div>
                 </header>
                 <RecordList onSelectRecord={this.onSelectRecord.bind(this)} />
+
+                <div className="toolbar">
+
+                        <select
+                            id="eval-mode-select"
+                            value={this.state.evalMode}
+                            onChange={e => this.setState({ evalMode: e.target.value }, () => this.eval())}
+                            style={{ marginLeft: '20px', fontSize: '14px', padding: '4px' }}
+                        >
+                            <option value="java">Java (Server)</option>
+                            <option value="js">JS (Local)</option>
+                        </select>
+
+                        <select
+                            id="rule-name-select"
+                            value={this.state.selectedRule || ''}
+                            onChange={e => this.setState({ selectedRule: e.target.value }, () => this.getRule(this.state.selectedRule))}
+                            style={{ marginLeft: '20px', fontSize: '14px', padding: '4px' }}
+                        >
+                            <option value="">Select Rule</option>
+                            {(this.state.ruleNames || []).map(ruleName => (
+                                <option key={ruleName} value={ruleName}>
+                                    {ruleName}
+                                </option>
+                            ))}
+                        </select>
+                        <button
+                        onClick={() => {
+                            if (window.confirm(`Are you sure you want to delete the rule "${this.state.selectedRule}"?`)) {
+                                this.deleteRule();
+                            }
+                        }}
+                        disabled={!this.state.selectedRule}
+                        style={{ marginLeft: '20px', fontSize: '14px', padding: '4px' }}
+                    >
+                        Delete Rule
+                    </button>
+
+
+
+                        <input
+                            type="text"
+                            value={this.state.ruleName}
+                            onChange={e => this.setState({ ruleName: e.target.value })}
+                            placeholder="Rule Name"
+                            style={{ marginLeft: '20px', fontSize: '14px', padding: '4px' }}
+                        />
+                    
+                            
+                         <button
+                            onClick={() => this.saveRule()}
+                            disabled={!(this.state.ruleName && this.state.ruleName.length >= 5)}
+                            style={{ marginLeft: '20px', fontSize: '14px', padding: '4px' }}
+                        >
+                            Save Rule
+                        </button>
+
+                </div>
+ 
+                               
+              
+
                 <SplitPane split="vertical" minSize={100} defaultSize={'30%'}>
                     <div className="pane">
                         <ScreenshotComponent base64WebPImage={screenshotBase64} style={{ width: '100%', height: '100%' }} />
@@ -366,6 +494,7 @@ class Exerciser extends React.Component {
                                 <label id="version-label" className="label"></label>
                  
                             </div>
+               
                             <div className="pane">
                                 <MonacoEditor
                                     language="json"
