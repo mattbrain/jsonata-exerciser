@@ -8,9 +8,10 @@ import jsonataMode from './jsonataMode';
 import { getLibraryHandle } from './externalLibsComponent';
 import RecordList from './RecordList';
 import axios from 'axios';
-  const url = 'https://jsonata.appleby-analytics.com/api/';
- 
-  //const url = 'http://localhost:3001/api/';
+
+
+const url = 'https://jsonata.appleby-analytics.com/api/';
+//const url = 'http://localhost:3001/api/';
 
 
 const baseUri = 'https://us-south.functions.appdomain.cloud/api/v1/web/04d6b400-5947-46c6-ae3e-ebdf4a7056de/default/';
@@ -30,9 +31,11 @@ class Exerciser extends React.Component {
             webpImage: null,
             evalMode: 'java', // NEW: Default eval mode
             ruleNames: [],
+            searchTerm: '',
             selectedRule: null,
             ruleData: null,
             ruleName: ''
+
         };
     }
 
@@ -456,6 +459,9 @@ class Exerciser extends React.Component {
                         </button>
 
                 </div>
+
+                
+
  
                                
               

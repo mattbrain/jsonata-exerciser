@@ -11,28 +11,24 @@ function RecordList({ onSelectRecord }) {
   const [selectedDeviceKey, setSelectedDeviceKey] = useState('');
   const [selectedMeasurementSummary, setSelectedMeasurementSummary] = useState('');
   const [selectedRecordId, setSelectedRecordId] = useState(null);
-  const [eventTypes, setEventTypes] = useState([]); // New state for event types
-  //selectedEventType is the selected event type from the dropdown
-  const [selectedEventType, setSelectedEventType] = useState(''); 
+  const [eventTypes, setEventTypes] = useState([]);
+  const [selectedEventType, setSelectedEventType] = useState('');
+  const [selectedsearchTerm, setSelectedsearchTerm] = useState('');
+  //const url = 'http://localhost:3001'; // Change this to your API URL
   const url = 'https://jsonata.appleby-analytics.com';
- 
- //const url = 'http://localhost:3001';
 
   // Fetch filter data
   useEffect(() => {
     const fetchFilters = async () => {
       try {
-        const deviceKeysResponse = await axios.get(url+'/api/device_keys');
+        const deviceKeysResponse = await axios.get(url + '/api/device_keys');
         setDeviceKeys(deviceKeysResponse.data);
 
-        const measurementSummariesResponse = await axios.get(url+'/api/measurement_summaries');
+        const measurementSummariesResponse = await axios.get(url + '/api/measurement_summaries');
         setMeasurementSummaries(measurementSummariesResponse.data);
 
-       //add event_types to the filter list
-        const eventTypesResponse = await axios.get(url+'/api/event_types');
+        const eventTypesResponse = await axios.get(url + '/api/event_types');
         setEventTypes(eventTypesResponse.data);
-      
-
       } catch (error) {
         console.error('Error fetching filters:', error);
       }
@@ -42,33 +38,41 @@ function RecordList({ onSelectRecord }) {
   }, []);
 
   // Fetch records based on filters
+  const fetchRecords = async () => {
+    console.log(
+      `Fetching records for page ${page}, device_key: ${selectedDeviceKey}, measurement_summary: ${selectedMeasurementSummary}, event_type: ${selectedEventType}, search_term: ${selectedsearchTerm}`
+    );
+
+    try {
+      const response = await axios.get(url + '/api/records', {
+        params: {
+          page,
+          device_key: selectedDeviceKey,
+          measurement_summary: selectedMeasurementSummary,
+          event_type: selectedEventType,
+          search_term: selectedsearchTerm,
+        },
+      });
+      console.log('Records fetched successfully:', response.data);
+
+      setRecords(response.data.records);
+      setTotalPages(response.data.totalPages);
+    } catch (error) {
+      console.error('Error fetching records:', error);
+    }
+  };
+
   useEffect(() => {
-    const fetchRecords = async () => {
-      console.log(`Fetching records for page ${page}, device_key: ${selectedDeviceKey}, measurement_summary: ${selectedMeasurementSummary}, event_type: ${selectedEventType}`);
-
-      try {
-        const response = await axios.get(url+'/api/records', {
-          params: { page, device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary, event_type: selectedEventType }//, event_type: selectedEventType } 
-        });
-        console.log('Records fetched successfully:', response.data);
-
-        setRecords(response.data.records);
-        setTotalPages(response.data.totalPages);
-      } catch (error) {
-        console.error('Error fetching records:', error);
-      }
-    };
-
     fetchRecords();
-  }, [page, selectedDeviceKey, selectedMeasurementSummary, selectedEventType]); // Add selectedEventType to the dependency array
+  }, [page, selectedDeviceKey, selectedMeasurementSummary, selectedsearchTerm, selectedEventType]);
 
   const loadRecord = async (recordId) => {
     console.log(`Attempting to load record with ID: ${recordId}`);
     try {
-      const response = await axios.get(url+`/api/record/${recordId}`);
+      const response = await axios.get(url + `/api/record/${recordId}`);
       console.log('Record loaded successfully:', response.data);
-      setSelectedRecordId(recordId); // Store only the record ID
-      onSelectRecord(response.data); // Pass the data to the parent component
+      setSelectedRecordId(recordId);
+      onSelectRecord(response.data);
     } catch (error) {
       console.error('Error loading record:', error);
     }
@@ -77,8 +81,13 @@ function RecordList({ onSelectRecord }) {
   const loadNextRecord = async () => {
     if (selectedRecordId) {
       try {
-        const response = await axios.get(url+`/api/record/${selectedRecordId}/next`, {
-          params: { device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary, event_type: selectedEventType } //, event_type: selectedEventType }
+        const response = await axios.get(url + `/api/record/${selectedRecordId}/next`, {
+          params: {
+            device_key: selectedDeviceKey,
+            measurement_summary: selectedMeasurementSummary,
+            event_type: selectedEventType,
+            search_term: selectedsearchTerm,
+          },
         });
         if (response.data && response.data.id) {
           loadRecord(response.data.id);
@@ -92,8 +101,13 @@ function RecordList({ onSelectRecord }) {
   const loadPreviousRecord = async () => {
     if (selectedRecordId) {
       try {
-        const response = await axios.get(url+`/api/record/${selectedRecordId}/previous`, {
-          params: { device_key: selectedDeviceKey, measurement_summary: selectedMeasurementSummary, event_type: selectedEventType } //, event_type: selectedEventType }
+        const response = await axios.get(url + `/api/record/${selectedRecordId}/previous`, {
+          params: {
+            device_key: selectedDeviceKey,
+            measurement_summary: selectedMeasurementSummary,
+            event_type: selectedEventType,
+            search_term: selectedsearchTerm,
+          },
         });
         if (response.data && response.data.id) {
           loadRecord(response.data.id);
@@ -109,9 +123,9 @@ function RecordList({ onSelectRecord }) {
       <div>
         <label>
           Device Key:
-          <select value={selectedDeviceKey} onChange={e => setSelectedDeviceKey(e.target.value)}>
-            <option value=''>All</option>
-            {deviceKeys.map(deviceKey => (
+          <select value={selectedDeviceKey} onChange={(e) => setSelectedDeviceKey(e.target.value)}>
+            <option value="">All</option>
+            {deviceKeys.map((deviceKey) => (
               <option key={deviceKey} value={deviceKey}>
                 {deviceKey}
               </option>
@@ -120,9 +134,9 @@ function RecordList({ onSelectRecord }) {
         </label>
         <label>
           Measurement Summary:
-          <select value={selectedMeasurementSummary} onChange={e => setSelectedMeasurementSummary(e.target.value)}>
-            <option value=''>All</option>
-            {measurementSummaries.map(summary => (
+          <select value={selectedMeasurementSummary} onChange={(e) => setSelectedMeasurementSummary(e.target.value)}>
+            <option value="">All</option>
+            {measurementSummaries.map((summary) => (
               <option key={summary} value={summary}>
                 {summary}
               </option>
@@ -132,18 +146,37 @@ function RecordList({ onSelectRecord }) {
 
         <label>
           Event Type:
-          <select value={selectedEventType} onChange={e => setSelectedEventType(e.target.value)}>
-            <option value=''>All</option>
-            {eventTypes.map(eventType => (
+          <select value={selectedEventType} onChange={(e) => setSelectedEventType(e.target.value)}>
+            <option value="">All</option>
+            {eventTypes.map((eventType) => (
               <option key={eventType} value={eventType}>
                 {eventType}
               </option>
             ))}
           </select>
-          </label>
+        </label>
+
+        <label>
+          Search:
+          <input
+            type="text"
+            placeholder="Search..."
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                const searchTerm = e.target.value.toLowerCase();
+                setSelectedsearchTerm(searchTerm);
+                fetchRecords(); // Fetch records based on the search term
+              } else if (e.key === 'Escape') {
+                e.target.value = '';
+                setSelectedsearchTerm('');
+                fetchRecords(); // Reset to original records
+              }
+            }}
+          />
+        </label>
       </div>
       <ul>
-        {records.map(record => (
+        {records.map((record) => (
           <li key={record.id} style={{ backgroundColor: selectedRecordId === record.id ? 'lightgray' : 'white' }}>
             {new Date(record.device_time).toLocaleString()} - {record.measurement_summary} - {record.device_key}
             <button onClick={() => loadRecord(record.id)}>Load</button>
@@ -151,11 +184,13 @@ function RecordList({ onSelectRecord }) {
         ))}
       </ul>
       <div>
-        <button onClick={() => setPage(page => Math.max(page - 1, 1))} disabled={page === 1}>
+        <button onClick={() => setPage((page) => Math.max(page - 1, 1))} disabled={page === 1}>
           Previous Page
         </button>
-        <span>Page {page} of {totalPages}</span>
-        <button onClick={() => setPage(page => Math.min(page + 1, totalPages))} disabled={page === totalPages}>
+        <span>
+          Page {page} of {totalPages}
+        </span>
+        <button onClick={() => setPage((page) => Math.min(page + 1, totalPages))} disabled={page === totalPages}>
           Next Page
         </button>
       </div>
