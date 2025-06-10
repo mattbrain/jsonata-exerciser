@@ -382,6 +382,8 @@ class Exerciser extends React.Component {
             contextmenu: false,
             automaticLayout: true,
             scrollBeyondLastLine: false,
+            folding: true,               // Enable folding (collapse/expand arrows)
+            foldingStrategy: 'indentation',     // auto | indentation
             extraEditorClassName: 'editor-pane'
         };
 
