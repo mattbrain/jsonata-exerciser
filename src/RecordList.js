@@ -14,7 +14,7 @@ function RecordList({ onSelectRecord }) {
   const [eventTypes, setEventTypes] = useState([]);
   const [selectedEventType, setSelectedEventType] = useState('');
   const [selectedsearchTerm, setSelectedsearchTerm] = useState('');
-  //const url = 'http://localhost:3001'; // Change this to your API URL
+ // const url = 'http://localhost:3001'; // Change this to your API URL
   const url = 'https://jsonata.appleby-analytics.com';
 
   // Fetch filter data

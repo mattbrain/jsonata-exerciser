@@ -117,6 +117,13 @@ class Exerciser extends React.Component {
     }
 
     componentDidMount() {
+        
+        const savedJsonata = localStorage.getItem('jsonataExpression');
+        if (savedJsonata) {
+            this.setState({ jsonata: savedJsonata });
+        }      
+        
+        
         this.getRuleNames();
         this.loadJSONata();
         fetch(baseUri + 'jsonata-versions.json')
@@ -212,6 +219,7 @@ class Exerciser extends React.Component {
 
     onChangeData(newValue) {
         this.setState({ json: newValue });
+        // localStorage.setItem('jsonataExpression', newValue);
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this.eval(), 500);
         this.clearMarkers();
@@ -230,6 +238,7 @@ class Exerciser extends React.Component {
 
     onChangeBindings(newValue) {
         this.setState({ bindings: newValue });
+        // localStorage.setItem('jsonataExpression', newValue);
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this.eval(), 500);
         this.clearMarkers();
@@ -237,9 +246,49 @@ class Exerciser extends React.Component {
 
     onChangeExpression(newValue) {
         this.setState({ jsonata: newValue });
+         localStorage.setItem('jsonataExpression', newValue);
         clearTimeout(this.timer);
         this.timer = setTimeout(() => this.eval(), 500);
         this.clearMarkers();
+        this.validateJsonataExpression(newValue);
+    }
+
+
+    offsetToLineCol(text, offset) {
+        const lines = text.slice(0, offset).split('\n');
+        const lineNumber = lines.length;
+        const column = lines[lines.length - 1].length + 1;
+        return { lineNumber, column };
+    }
+
+    validateJsonataExpression(expression) {
+        const editor = this.jsonataEditor;
+        const monaco = this.monaco;
+
+        try {
+            window.jsonata(expression); // Try compile
+            monaco.editor.setModelMarkers(editor.getModel(), 'jsonata', []); // Clear errors
+        } catch (err) {
+            const errorText = editor.getValue();
+            let { lineNumber, column } = { lineNumber: 1, column: 1 };
+
+            if (typeof err.position === 'number') {
+                const pos = this.offsetToLineCol(errorText, err.position);
+                lineNumber = pos.lineNumber;
+                column = pos.column;
+            }
+
+            monaco.editor.setModelMarkers(editor.getModel(), 'jsonata', [
+                {
+                    startLineNumber: lineNumber,
+                    startColumn: column,
+                    endLineNumber: lineNumber,
+                    endColumn: column + 1,
+                    message: err.message,
+                    severity: monaco.MarkerSeverity.Error,
+                },
+            ]);
+        }
     }
 
     format() {
@@ -368,10 +417,17 @@ class Exerciser extends React.Component {
         expr.assign('__evaluate_exit', () => { depth--; check(); });
     }
 
-    clearMarkers() {
+clearMarkers() {
+    if (this.monaco && this.jsonataEditor) {
+        this.monaco.editor.setModelMarkers(this.jsonataEditor.getModel(), 'jsonata', []);
+    }
+    if (this.jsonataEditor) {
         this.jsonataEditor.decorations = this.jsonataEditor.deltaDecorations(this.jsonataEditor.decorations, []);
+    }
+    if (this.jsonEditor) {
         this.jsonEditor.decorations = this.jsonEditor.deltaDecorations(this.jsonEditor.decorations, []);
     }
+}
 
   
 
